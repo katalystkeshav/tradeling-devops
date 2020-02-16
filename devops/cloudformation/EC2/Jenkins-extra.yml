@@ -1,0 +1,74 @@
+Parameters: 
+  LinuxAmi: 
+    Description: Ami id of linux instance
+    Default: ami-02eac2c0129f6376b
+    Type: String
+  AZ: 
+    Description: Availability zone
+    Default: us-east-1a
+    Type: String
+  Type: 
+    Description: Instance type
+    Default: t2.micro
+    Type: String
+  KeyName: 
+    Description: Name of the key pair
+    Default: test
+    Type: String
+  JenkinsSgId: 
+    Description: Security group id
+    Type: "AWS::EC2::SecurityGroup::Id"
+    Default: "sg-0a58949263cacb050"
+  PubSubId: 
+    Description: Private subnet id
+    Type: "AWS::EC2::Subnet::Id"
+    Default: "subnet-07806dc31deb1117e"
+  IamRole: 
+    Description: Iam role of jenkins
+    Type: String
+    Default: "test-TestIamStack-22LEZVPXH2XP-JenkinsRole-14CEAARCHM63F"
+
+Resources:
+
+  JenkinsInstanceProfile: 
+    Type: "AWS::IAM::InstanceProfile"
+    Properties: 
+      InstanceProfileName: "JenkinsInstanceProfile"
+      Path: "/"
+      Roles: 
+        - 
+          Ref: IamRole
+
+  JenkinsInstance: 
+    Type: AWS::EC2::Instance
+    Properties: 
+      AvailabilityZone: 
+        Ref: AZ
+      InstanceType: 
+        Ref: Type
+      ImageId: 
+        Ref: LinuxAmi
+      KeyName: 
+        Ref: KeyName
+      Tenancy: default
+      BlockDeviceMappings:
+        - DeviceName: /dev/sda1
+          Ebs:
+            VolumeSize: 8
+            VolumeType: gp2
+            DeleteOnTermination: "true"
+      SecurityGroupIds: 
+        - Ref: JenkinsSgId
+      SubnetId: 
+        Ref: PubSubId
+      IamInstanceProfile: !Ref JenkinsInstanceProfile
+      Tags:
+        - Key: Name
+          Value: Jenkins Server
+        - Key: Environment
+          Value: Test
+
+  Eip:
+    Type: AWS::EC2::EIP
+    Properties:
+      InstanceId: !Ref JenkinsInstance

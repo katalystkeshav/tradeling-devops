@@ -1,0 +1,144 @@
+AWSTemplateFormatVersion: "2010-09-09"
+Resources: 
+
+  TestVpcStack: 
+    Type: AWS::CloudFormation::Stack
+    Properties: 
+      TemplateURL: "https://tradeling-cloudformation.s3.amazonaws.com/Vpc/vpc.yml"
+
+  TestSubnetStack: 
+    Type: AWS::CloudFormation::Stack
+    Properties: 
+      TemplateURL: "https://tradeling-cloudformation.s3.amazonaws.com/Subnets/subnet.yml"
+      Parameters: 
+        TestVpc:
+          Fn::GetAtt: [ TestVpcStack, Outputs.VpcId ]
+
+  TestRouteTableStack: 
+    Type: AWS::CloudFormation::Stack
+    Properties: 
+      TemplateURL: "https://tradeling-cloudformation.s3.amazonaws.com/RouteTable/route-table.yml"
+      Parameters: 
+        TestVpc:
+          Fn::GetAtt: [ TestVpcStack, Outputs.VpcId ]
+
+  TestIgStack: 
+    Type: AWS::CloudFormation::Stack
+    DependsOn: TestVpcStack
+    Properties: 
+      TemplateURL: "https://tradeling-cloudformation.s3.amazonaws.com/InternetGateway/InterGate.yml"
+      Parameters: 
+        TestVpc:
+          Fn::GetAtt: [ TestVpcStack, Outputs.VpcId ]
+
+  TestNatStack: 
+    Type: AWS::CloudFormation::Stack
+    DependsOn: [ "TestIgStack", "TestSubnetStack" ]
+    Properties: 
+      TemplateURL: "https://tradeling-cloudformation.s3.amazonaws.com/NatGateway/nat.yml"
+      Parameters: 
+        TestVpc:
+          Fn::GetAtt: [ TestVpcStack, Outputs.VpcId ]
+        TestPub:
+          Fn::GetAtt: [ TestSubnetStack, Outputs.PubIdA ]
+
+  TestRoutesStack: 
+    Type: AWS::CloudFormation::Stack
+    DependsOn: [ "TestIgStack", "TestNatStack" ]
+    Properties: 
+      TemplateURL: "https://tradeling-cloudformation.s3.amazonaws.com/RouteTable/routes.yml"
+      Parameters: 
+        TestPubRt:
+          Fn::GetAtt: [ TestRouteTableStack, Outputs.PubRtId ]
+        TestPvtRt:
+          Fn::GetAtt: [ TestRouteTableStack, Outputs.PvtRtId ]
+        TestIg:
+          Fn::GetAtt: [ TestIgStack, Outputs.IgId ]
+        TestNat:
+          Fn::GetAtt: [ TestNatStack, Outputs.NatId ]
+
+  TestSubnetAssociationStack: 
+    Type: AWS::CloudFormation::Stack
+    DependsOn: [ "TestSubnetStack", "TestRouteTableStack" ]
+    Properties: 
+      TemplateURL: "https://tradeling-cloudformation.s3.amazonaws.com/Subnets/subnet-association.yml"
+      Parameters: 
+        TestPubRt:
+          Fn::GetAtt: [ TestRouteTableStack, Outputs.PubRtId ]
+        TestPvtRt:
+          Fn::GetAtt: [ TestRouteTableStack, Outputs.PvtRtId ]
+        TestPubSubA:
+          Fn::GetAtt: [ TestSubnetStack, Outputs.PubIdA ]
+        TestPubSubB:
+          Fn::GetAtt: [ TestSubnetStack, Outputs.PubIdB ]
+        TestPvtSubA:
+          Fn::GetAtt: [ TestSubnetStack, Outputs.PvtIdA ]
+        TestPvtSubB:
+          Fn::GetAtt: [ TestSubnetStack, Outputs.PvtIdB ]
+
+  TestSgStack: 
+    Type: AWS::CloudFormation::Stack
+    DependsOn: TestVpcStack
+    Properties: 
+      TemplateURL: "https://tradeling-cloudformation.s3.amazonaws.com/SecurityGroup/sg.yml"
+      Parameters: 
+        TestVpc:
+          Fn::GetAtt: [ TestVpcStack, Outputs.VpcId ]
+
+  TestIamStack: 
+    Type: AWS::CloudFormation::Stack
+    Properties: 
+      TemplateURL: "https://tradeling-cloudformation.s3.amazonaws.com/Iam/role.yml"
+
+  TestPolicyStack: 
+    Type: AWS::CloudFormation::Stack
+    DependsOn: TestIamStack
+    Properties: 
+      TemplateURL: "https://tradeling-cloudformation.s3.amazonaws.com/Iam/policy.yml"
+      Parameters: 
+        EksServiceRole:
+          Fn::GetAtt: [ TestIamStack, Outputs.EksRoleName ]
+
+  TestJenkinsStack: 
+    Type: AWS::CloudFormation::Stack
+    DependsOn: [ "TestVpcStack", "TestSubnetStack" ]
+    Properties: 
+      TemplateURL: "https://tradeling-cloudformation.s3.amazonaws.com/EC2/Jenkins.yml"
+      Parameters: 
+        JenkinsSgId:
+          Fn::GetAtt: [ TestSgStack, Outputs.JenkinsSgId ]
+        PubSubId:
+          Fn::GetAtt: [ TestSubnetStack, Outputs.PubIdA ]
+        IamRole:
+          Fn::GetAtt: [ TestIamStack, Outputs.JenkinsRoleName ]
+
+  TestEksClusterStack: 
+    Type: AWS::CloudFormation::Stack
+    DependsOn: [ "TestSgStack", "TestSubnetStack", "TestIamStack" ]
+    Properties: 
+      TemplateURL: "https://tradeling-cloudformation.s3.amazonaws.com/Eks/cluster.yml"
+      Parameters: 
+        EksSgId:
+          Fn::GetAtt: [ TestSgStack, Outputs.EksSgId ]
+        PvtSubA:
+          Fn::GetAtt: [ TestSubnetStack, Outputs.PvtIdA ]
+        PvtSubB:
+          Fn::GetAtt: [ TestSubnetStack, Outputs.PvtIdB ]
+        IamRole:
+          Fn::GetAtt: [ TestIamStack, Outputs.EksRoleArn ]
+
+  TestNodeGroupStack: 
+    Type: AWS::CloudFormation::Stack
+    DependsOn: [ "TestVpcStack", "TestSubnetStack", "TestEksClusterStack" ]
+    Properties: 
+      TemplateURL: "https://tradeling-cloudformation.s3.amazonaws.com/EC2/amazon-eks-nodegroup.yml"
+      Parameters: 
+        ClusterName:
+          Fn::GetAtt: [ TestEksClusterStack, Outputs.ClusterName ]
+        ClusterControlPlaneSecurityGroup:
+          Fn::GetAtt: [ TestSgStack, Outputs.EksSgId ]
+        VpcId:
+          Fn::GetAtt: [ TestVpcStack, Outputs.VpcId ]
+        Subnets:
+          Fn::GetAtt: [ TestSubnetStack, Outputs.PvtSubId ]
+

@@ -1,0 +1,142 @@
+Parameters: 
+  TestVpc: 
+    Description: Vpc Id
+    Type: "AWS::EC2::VPC::Id"
+
+Resources:
+
+  JenkinsSg:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+        GroupName: JenkinsSg
+        GroupDescription: Allow http to client host
+        VpcId:
+          Ref: TestVpc
+        SecurityGroupIngress:
+        - IpProtocol: tcp
+          FromPort: 8080
+          ToPort: 8080
+          CidrIp: 0.0.0.0/0
+        - IpProtocol: tcp
+          FromPort: 22
+          ToPort: 22
+          CidrIp: 0.0.0.0/0
+        - IpProtocol: -1
+          CidrIp: 192.168.0.0/24
+        Tags:
+        - Key: Name
+          Value: JenkinsSg
+        - Key: Environment
+          Value: Test
+
+#  EksSg:
+#    Type: AWS::EC2::SecurityGroup
+#    Properties:
+#        GroupName: EksSg
+#        GroupDescription: Allow http to client host
+#        VpcId:
+#          Ref: TestVpc
+#        Tags:
+#        - Key: Name
+#          Value: EksSg
+#        - Key: Environment
+#          Value: Test    
+
+  ControlPlaneSecurityGroup:
+    Type: 'AWS::EC2::SecurityGroup'
+    Properties:
+      GroupDescription: Communication between the control plane and worker nodegroups
+      Tags:
+        - Key: Name
+          Value: !Sub '${AWS::StackName}/ControlPlaneSecurityGroup'
+      VpcId: !Ref TestVpc
+
+  ClusterSharedNodeSecurityGroup:
+    Type: 'AWS::EC2::SecurityGroup'
+    Properties:
+      GroupDescription: Communication between all nodes in the cluster
+      VpcId: !Ref TestVpc
+
+#  SG:
+#    Type: 'AWS::EC2::SecurityGroup'
+#    Properties:
+#      GroupDescription: >-
+#        Communication between the control plane and worker nodes in group
+#      Tags:
+#        - Key: kubernetes.io/cluster/TestCluster
+#          Value: owned
+#        - Key: Name
+#          Value: !Sub '${AWS::StackName}/SG'
+#      VpcId: !Ref TestVpc
+#
+#  EgressInterCluster:
+#    Type: 'AWS::EC2::SecurityGroupEgress'
+#    Properties:
+#      Description: >-
+#        Allow control plane to communicate with worker nodes in group
+#        (kubelet and workload TCP ports)
+#      DestinationSecurityGroupId: !Ref SG
+#      FromPort: 1025
+#      GroupId: !Ref EksSg
+#      IpProtocol: tcp
+#      ToPort: 65535
+#
+#  EgressInterClusterAPI:
+#    Type: 'AWS::EC2::SecurityGroupEgress'
+#    Properties:
+#      Description: >-
+#        Allow control plane to communicate with worker nodes in group
+#        (workloads using HTTPS port, commonly used with extension API servers)
+#      DestinationSecurityGroupId: !Ref SG
+#      FromPort: 443
+#      GroupId: !Ref EksSg
+#      IpProtocol: tcp
+#      ToPort: 443
+#
+#  IngressInterCluster:
+#    Type: 'AWS::EC2::SecurityGroupIngress'
+#    Properties:
+#      Description: >-
+#        Allow worker nodes in group to communicate with control plane
+#        (kubelet and workload TCP ports)
+#      FromPort: 1025
+#      GroupId: !Ref SG
+#      IpProtocol: tcp
+#      SourceSecurityGroupId: !Ref EksSg
+#      ToPort: 65535
+#
+#  IngressInterClusterAPI:
+#    Type: 'AWS::EC2::SecurityGroupIngress'
+#    Properties:
+#      Description: >-
+#        Allow worker nodes in group to communicate with control plane
+#        (workloads using HTTPS port, commonly used with extension API servers)
+#      FromPort: 443
+#      GroupId: !Ref SG
+#      IpProtocol: tcp
+#      SourceSecurityGroupId: !Ref EksSg
+#      ToPort: 443
+#
+#  IngressInterClusterCP:
+#    Type: 'AWS::EC2::SecurityGroupIngress'
+#    Properties:
+#      Description: >-
+#        Allow control plane to receive API requests from worker nodes in group
+#      FromPort: 443
+#      GroupId: !Ref EksSg
+#      IpProtocol: tcp
+#      SourceSecurityGroupId: !Ref SG
+#      ToPort: 443
+
+Outputs:
+  JenkinsSgId:
+    Description: Id of jenkins security group.
+    Value: !Ref JenkinsSg
+
+  EksSgId:
+    Description: Id of eks security group.
+    Value: !Ref ControlPlaneSecurityGroup
+
+  SharedNodeSgId:
+    Description: Id of eks security group.
+    Value: !Ref ClusterSharedNodeSecurityGroup

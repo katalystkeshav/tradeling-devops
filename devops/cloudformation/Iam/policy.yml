@@ -1,0 +1,45 @@
+
+Parameters: 
+#  EksServieRole: 
+#    Description: Security group id
+#    Type: "AWS::EC2::SecurityGroup::Id"
+#  PvtSubA: 
+#    Description: Private subnet id
+#    Type: "AWS::EC2::Subnet::Id"
+#  PvtSubB: 
+#    Description: Private subnet id
+#    Type: "AWS::EC2::Subnet::Id"
+  EksServiceRole: 
+    Description: Iam role of eks
+    Type: String
+
+Resources:
+
+  PolicyCloudWatchMetrics:
+    Type: 'AWS::IAM::Policy'
+    Properties:
+      PolicyDocument:
+        Statement:
+          - Action:
+              - 'cloudwatch:PutMetricData'
+            Effect: Allow
+            Resource: '*'
+        Version: 2012-10-17
+      PolicyName: !Sub '${AWS::StackName}-PolicyCloudWatchMetrics'
+      Roles:
+        - !Ref EksServiceRole
+  PolicyNLB:
+    Type: 'AWS::IAM::Policy'
+    Properties:
+      PolicyDocument:
+        Statement:
+          - Action:
+              - 'elasticloadbalancing:*'
+              - 'ec2:CreateSecurityGroup'
+              - 'ec2:Describe*'
+            Effect: Allow
+            Resource: '*'
+        Version: 2012-10-17
+      PolicyName: !Sub '${AWS::StackName}-PolicyNLB'
+      Roles:
+        - !Ref EksServiceRole

@@ -1,0 +1,5 @@
+
+aws cloudformation create-stack --stack-name test --template-url https://tradeling-cloudformation.s3.amazonaws.com/main.yml --capabilities CAPA
+aws sts get-caller-identity
+aws eks update-kubeconfig --name eks-cluster-name --region aws-region
+kubectl get svc

@@ -1,0 +1,34 @@
+
+Parameters: 
+  EksSgId: 
+    Description: Security group id
+    Type: "AWS::EC2::SecurityGroup::Id"
+  PvtSubA: 
+    Description: Private subnet id
+    Type: "AWS::EC2::Subnet::Id"
+  PvtSubB: 
+    Description: Private subnet id
+    Type: "AWS::EC2::Subnet::Id"
+  IamRole: 
+    Description: Iam role of jenkins
+    Type: String
+
+Resources:
+  TestCluster:
+    Type: 'AWS::EKS::Cluster'
+    Properties:
+      Name: TestCluster
+      Version: '1.14'
+      RoleArn: !Ref IamRole
+      ResourcesVpcConfig:
+        SecurityGroupIds:
+          - !Ref EksSgId
+        SubnetIds:
+          - !Ref PvtSubA
+          - !Ref PvtSubB
+
+Outputs:
+
+  ClusterName:
+    Description: Returns name of the cluster
+    Value: !Ref TestCluster
